@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LabelAgent · 智能标注与训练实验平台</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🏷️ <b>LabelAgent</b><span class="sub">CV 数据标注 · 清洗 · 数据集 · 训练与消融</span></div>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="annotation">🏷️ 标注</button>
+      <button class="tab" data-tab="cleaning">🧹 清洗</button>
+      <button class="tab" data-tab="dataset">📂 数据集</button>
+      <button class="tab" data-tab="environment">🐍 环境</button>
+      <button class="tab" data-tab="training">🚀 训练与消融</button>
+    </nav>
+    <div class="overview" id="overview">图像 0 · 标注 0 · 类别 0</div>
+  </header>
+
+  <main>
+    <!-- ==================== 标注 ==================== -->
+    <section class="panel active" id="panel-annotation">
+      <div class="grid-2">
+        <div class="card">
+          <h3>1. 模型与规则配置</h3>
+          <label>标注模型</label>
+          <select id="ann-provider"></select>
+          <div id="ann-apikey-row" class="hidden">
+            <label>API Key</label>
+            <input id="ann-apikey" type="password" placeholder="填写 API Key">
+            <label>服务地址（可选，覆盖默认端点）</label>
+            <input id="ann-base-url" type="text" placeholder="留空使用默认">
+          </div>
+          <label>统一标签名称</label>
+          <input id="ann-label" type="text" value="scratch_defect">
+          <label>单图目标数量上限</label>
+          <input id="ann-max-objects" type="number" min="1" max="100" value="5">
+          <label>文本标注提示词</label>
+          <textarea id="ann-prompt" rows="2">标注汽车, 划痕, 缺陷</textarea>
+          <div class="row">
+            <button id="btn-agent" class="primary">⚡ 开始 Agent 自动标注</button>
+            <button id="btn-agent-stop" class="danger hidden">停止</button>
+          </div>
+          <div id="agent-status" class="muted"></div>
+        </div>
+
+        <div class="card">
+          <h3>2. 图像导入</h3>
+          <label>服务器文件夹路径</label>
+          <div class="row">
+            <input id="ann-folder" type="text" placeholder="例如 D:\images 或 /data/images">
+            <button id="btn-import-folder">导入文件夹</button>
+          </div>
+          <label>浏览器上传图片（多选）</label>
+          <input id="ann-upload" type="file" accept="image/*" multiple>
+          <label>没有数据？生成演示图像（无需 API Key）</label>
+          <div class="row">
+            <input id="demo-count" type="number" min="1" max="200" value="12">
+            <button id="btn-demo">🎲 生成演示图像</button>
+          </div>
+          <div id="import-msg" class="muted"></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>3. 图库与标注浏览</h3>
+          <div id="gallery" class="gallery"></div>
+          <div class="row">
+            <button id="btn-prev">◀ 上一张</button>
+            <button id="btn-next">下一张 ▶</button>
+            <button id="btn-refresh">刷新</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>4. 标注预览与修订</h3>
+          <div class="viewer-wrap"><canvas id="viewer" width="640" height="480"></canvas></div>
+          <div id="ann-list" class="ann-list"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>5. 标注格式导出</h3>
+        <div class="row">
+          <select id="export-format">
+            <option value="labelme">LabelMe JSON（多边形/掩膜）</option>
+            <option value="voc">Pascal VOC XML / LabelImg</option>
+            <option value="yolo">YOLO TXT（v5/v8/v11 归一化）</option>
+            <option value="coco">MS COCO JSON</option>
+            <option value="csv">Annotation CSV</option>
+          </select>
+          <button id="btn-export-single">导出当前格式文件</button>
+          <button id="btn-export-zip" class="primary">打包导出为 Zip</button>
+        </div>
+        <div id="export-msg" class="muted"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 清洗 ==================== -->
+    <section class="panel" id="panel-cleaning">
+      <div class="grid-2">
+        <div class="card">
+          <h3>数据质量诊断</h3>
+          <label>模糊度阈值（Laplacian 方差，越低越严格）</label>
+          <input id="clean-blur-thresh" type="number" min="0" step="10" value="100">
+          <div class="row">
+            <button id="btn-diagnose" class="primary">🔍 开始诊断</button>
+          </div>
+          <div id="diagnose-result" class="diagnose-box"></div>
+        </div>
+        <div class="card">
+          <h3>自动清洗</h3>
+          <label class="check"><input type="checkbox" id="clean-dup" checked> 剔除重复图</label>
+          <label class="check"><input type="checkbox" id="clean-oob" checked> 自动纠偏越界框</label>
+          <label class="check"><input type="checkbox" id="clean-blurry"> 剔除模糊图</label>
+          <label class="check"><input type="checkbox" id="clean-empty"> 剔除空图</label>
+          <label>重复图匹配策略</label>
+          <select id="clean-method">
+            <option value="lsh">LSH 分桶匹配 O(N)</option>
+            <option value="pairwise">精确 Pairwise O(N²)</option>
+          </select>
+          <div class="row">
+            <button id="btn-clean" class="primary">🧽 自动清洗</button>
+          </div>
+          <div id="clean-result" class="muted"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>哈希缓存</h3>
+        <div class="row">
+          <span id="cache-info" class="muted">缓存：-</span>
+          <button id="btn-cache-clear">清空缓存</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 数据集 ==================== -->
+    <section class="panel" id="panel-dataset">
+      <div class="grid-2">
+        <div class="card">
+          <h3>类别统计</h3>
+          <button id="btn-stats" class="primary">📊 统计当前标注</button>
+          <table id="stats-table" class="table">
+            <thead><tr><th>类别</th><th>数量</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Train / Val 划分</h3>
+          <label>数据集名称</label>
+          <input id="ds-name" type="text" value="defect_dataset_split_v1">
+          <label>训练集比例：<b id="ds-ratio-label">0.80</b></label>
+          <input id="ds-ratio" type="range" min="0.50" max="0.95" step="0.05" value="0.80">
+          <div class="row">
+            <button id="btn-split" class="primary">划分数据集并生成专属 dataset.yaml</button>
+          </div>
+          <div id="split-result" class="muted"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>已生成的数据集</h3>
+        <div id="ds-list" class="muted"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 环境 ==================== -->
+    <section class="panel" id="panel-environment">
+      <div class="grid-2">
+        <div class="card">
+          <h3>Python 解释器</h3>
+          <div class="row">
+            <button id="btn-detect-env" class="primary">🔎 检测可用 Python 环境</button>
+          </div>
+          <div id="env-list" class="env-list"></div>
+        </div>
+        <div class="card">
+          <h3>手动导入 / 依赖包</h3>
+          <label>Python 可执行文件路径</label>
+          <input id="env-path" type="text" placeholder="例如 E:\Miniconda\envs\train\python.exe">
+          <div class="row">
+            <button id="btn-import-env">导入</button>
+            <button id="btn-env-packages">查看依赖包</button>
+          </div>
+          <table id="pkg-table" class="table">
+            <thead><tr><th>Package</th><th>Version</th><th>Status</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="muted">说明：训练深度学习模型需要外部 Python 环境（torch / ultralytics 等）。LabelAgent 自身运行不依赖该环境。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 训练与消融 ==================== -->
+    <section class="panel" id="panel-training">
+      <div class="grid-2">
+        <div class="card">
+          <h3>1. 架构配置与损失函数</h3>
+          <label>模型架构</label>
+          <select id="tr-arch"></select>
+          <label>损失函数</label>
+          <select id="tr-loss"></select>
+          <label>优化器</label>
+          <select id="tr-optimizer"></select>
+          <label>学习率调度策略</label>
+          <select id="tr-scheduler"></select>
+        </div>
+        <div class="card">
+          <h3>2. 训练参数与策略</h3>
+          <div class="row">
+            <div><label>Epochs</label><input id="tr-epochs" type="number" value="12" min="1"></div>
+            <div><label>Batch</label><input id="tr-batch" type="number" value="8" min="1"></div>
+            <div><label>ImgSize</label><input id="tr-imgsize" type="number" value="640" min="32"></div>
+            <div><label>LR</label><input id="tr-lr" type="number" step="0.001" value="0.01"></div>
+          </div>
+          <label class="check"><input type="checkbox" id="tr-twostage" checked> 开启两阶段训练</label>
+          <div class="row">
+            <div><label>Stage 1 Epochs</label><input id="tr-stage1" type="number" value="8" min="1"></div>
+            <div><label>Stage 2 Epochs</label><input id="tr-stage2" type="number" value="4" min="1"></div>
+          </div>
+          <div id="tr-strategies"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>3. 训练看板</h3>
+        <div class="row">
+          <label>运行模式</label>
+          <select id="tr-mode">
+            <option value="demo">演示模式（无需 GPU/外部环境）</option>
+            <option value="external">外部 Python 环境（真实训练）</option>
+          </select>
+          <label>Python 解释器（外部模式）</label>
+          <input id="tr-python" type="text" placeholder="从环境页面复制 python.exe 路径">
+          <label>dataset.yaml 路径</label>
+          <input id="tr-dataset-yaml" type="text" placeholder="留空自动使用数据集模块输出">
+          <button id="btn-train-start" class="primary">🚀 启动两阶段模型训练</button>
+          <button id="btn-train-stop" class="danger hidden">停止</button>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" id="train-progress"><span id="train-progress-text">0%</span></div>
+        </div>
+        <div class="row">
+          <span id="train-epoch" class="muted">Epoch 0 / 0</span>
+          <span id="train-stage" class="muted">Stage -</span>
+        </div>
+        <div class="row">
+          <canvas id="loss-chart" width="640" height="220"></canvas>
+          <pre id="train-console" class="console"></pre>
+        </div>
+        <div id="train-artifacts" class="muted"></div>
+      </div>
+      <div class="card">
+        <h3>4. 多组数据/模型消融对比 (Ablation)</h3>
+        <div class="row">
+          <label>实验组名称</label><input id="abl-name" type="text" value="baseline">
+          <label>模型架构</label><select id="abl-arch">
+            <option>RT-DETR</option><option>YOLOv8-Seg</option>
+            <option>Deformable-DETR</option><option>ResNet50</option>
+          </select>
+          <label class="check"><input type="checkbox" id="abl-warmup"> Warmup</label>
+          <label class="check"><input type="checkbox" id="abl-ema"> EMA</label>
+          <label class="check"><input type="checkbox" id="abl-mosaic"> Mosaic</label>
+          <button id="btn-abl-add">新增一组消融实验组</button>
+        </div>
+        <table id="abl-table" class="table">
+          <thead><tr><th>名称</th><th>架构</th><th>Warmup</th><th>EMA</th><th>Mosaic</th><th>操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="row">
+          <button id="btn-abl-run" class="primary">▶ 启动多组数据集消融对比实验</button>
+          <input id="abl-csv" type="file" accept=".csv" multiple>
+          <button id="btn-abl-import">导入已有 results.csv</button>
+          <a id="btn-abl-summary" class="btn-link" download="ablation_summary.csv">⬇ 导出 ablation_summary.csv</a>
+          <a id="btn-abl-plot" class="btn-link" download="ablation_comparison.png">⬇ 下载对比图</a>
+        </div>
+        <div id="abl-result" class="muted"></div>
+        <table id="abl-result-table" class="table hidden">
+          <thead><tr><th>变体</th><th>架构</th><th>Val Loss</th><th>mAP@0.5</th><th>Precision</th><th>相对提升</th><th>最佳</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <img id="abl-plot-img" class="hidden plot-img">
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">LabelAgent · 面向计算机视觉的数据智能标注与训练实验平台 · <a href="/api/health" target="_blank">服务状态</a></footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

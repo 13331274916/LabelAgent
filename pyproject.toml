@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "labelagent"
+version = "0.1.0"
+description = "AI vision labeling desktop application - 面向计算机视觉的数据智能标注、清洗、数据集构建与训练实验平台"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "LabelAgent contributors" }]
+keywords = ["computer-vision", "labeling", "annotation", "yolo", "dataset", "ablation"]
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "pydantic>=2.5",
+    "pillow>=10.0",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.7"]
+dev = ["pytest>=8.0", "httpx>=0.27"]
+
+[project.scripts]
+labelagent = "labelagent.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["labelagent*"]
+
+[tool.setuptools.package-data]
+labelagent = ["web/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# 测试与覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 运行期工作目录（日志、缓存、导出、演示图像、训练产物）
+workspace/
+*.log
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# 打包产物
+*.spec

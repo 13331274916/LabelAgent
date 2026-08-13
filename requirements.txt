@@ -1,0 +1,11 @@
+# LabelAgent 运行依赖
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2.5
+pillow>=10.0
+numpy>=1.24
+pyyaml>=6.0
+requests>=2.31
+python-multipart>=0.0.9
+# 可选：消融对比图绘制（未安装时自动降级为纯文本表格）
+matplotlib>=3.7
